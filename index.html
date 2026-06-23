@@ -49,14 +49,8 @@
 
   /* unified controls container */
   .controls { padding:0; }
-  .controls .controls-grid { display:grid; grid-template-columns:1fr 1fr; }
-  .controls .controls-grid > .panel { border:none; box-shadow:none; border-radius:0; margin:0; }
-  .controls .controls-grid > .panel:first-child { border-right:1px solid var(--border); }
-  .controls .controls-grid:not(:last-child) { border-bottom:1px solid var(--border); }
-  @media (max-width: 980px){
-    .controls .controls-grid { grid-template-columns:1fr; }
-    .controls .controls-grid > .panel:first-child { border-right:none; border-bottom:1px solid var(--border); }
-  }
+  .controls > .panel { border:none; box-shadow:none; border-radius:0; margin:0; }
+  .controls > .panel:not(:last-child) { border-bottom:1px solid var(--border); }
 
   .group-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .chip {
@@ -71,7 +65,7 @@
   .chip.on .box, .chip.locked .box { background:var(--accent); border-color:var(--accent); }
   .chip .box svg { width:10px; height:10px; }
 
-  .filters { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; }
+  .filters { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; }
   @media (max-width:760px){ .filters{ grid-template-columns:1fr 1fr;} }
   .filter label { display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; margin-bottom:5px;}
   .ms { position:relative; }
@@ -106,6 +100,13 @@
   .period-field { display:flex; flex-direction:column; gap:5px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
   .date-input { border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--text); font-family:inherit; }
   .date-input:focus { outline:none; border-color:var(--accent); }
+  .bettor-row { display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
+  .radio-group { display:flex; gap:10px; }
+  .radio { display:inline-flex; align-items:center; gap:7px; padding:8px 14px; border:1px solid var(--border-strong); border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:550; user-select:none; transition:.12s; }
+  .radio:hover { border-color:var(--accent); }
+  .radio.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+  .radio input { margin:0; accent-color:var(--accent); }
+  .bettor-field { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .bettor-input { border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:12.5px; width:240px; max-width:100%; font-family:inherit; color:var(--text); }
   .bettor-input:focus { outline:none; border-color:var(--accent); }
   .bettor-status { font-size:12px; font-weight:600; }
@@ -338,7 +339,8 @@ var state = {
   sortDir: "desc",           // asc | desc
   dateFrom: (isoMinus(DATE_MAX,29) < DATE_MIN ? DATE_MIN : isoMinus(DATE_MAX,29)),
   dateTo: DATE_MAX,
-  bettor: "",                // applied bettor ID ("" = all bettors)
+  bettorMode: "all",         // "all" | "specific"
+  bettor: "",                // applied bettor ID ("" = none applied)
   bettorInput: ""            // current text in the ID box (uncommitted)
 };
 
@@ -542,23 +544,33 @@ function periodPanelHtml(data){
 }
 
 function bettorPanelHtml(data){
+  var mode = state.bettorMode;
   var applied = state.bettor;
-  var found = applied && data.datedCount>0;
-  var feedback;
-  if(!applied){
-    feedback = '<span class="muted">Showing <b>all bettors</b></span>';
-  } else if(found){
-    feedback = '<span class="bettor-status ok">✓ Bettor <b>'+esc(applied)+'</b> · '+fmtNum(data.datedCount)+' bet lines</span>';
-  } else {
-    feedback = '<span class="bettor-status err">No bets for ID “'+esc(applied)+'” in this period</span>';
-  }
-  return '<div class="panel"><div class="panel-head"><h2>Bettor</h2><span class="hint">report for all or a single bettor ID</span>'
-    + '<span class="spacer"></span>'
-    + (applied ? '<button class="btn" id="bettor-clear">All bettors</button>' : '')
-    + '</div><div class="panel-body"><div class="period-row">'
+  var field = "";
+  if(mode==="specific"){
+    var status;
+    if(!applied){
+      status = '<span class="muted">Enter an ID, then Apply</span>';
+    } else if(data.datedCount>0){
+      status = '<span class="bettor-status ok">✓ Bettor <b>'+esc(applied)+'</b> · '+fmtNum(data.datedCount)+' bet lines</span>';
+    } else {
+      status = '<span class="bettor-status err">No bets for ID “'+esc(applied)+'” in this period</span>';
+    }
+    field = '<div class="bettor-field">'
       + '<input id="bettor-input" class="bettor-input" placeholder="Enter bettor ID…" value="'+esc(state.bettorInput)+'" autocomplete="off">'
       + '<button class="btn primary" id="bettor-apply">Apply</button>'
-      + feedback
+      + status
+    + '</div>';
+  }
+  function radio(val,label){
+    return '<label class="radio'+(mode===val?' on':'')+'">'
+      + '<input type="radio" name="bettorMode" value="'+val+'"'+(mode===val?' checked':'')+'>'
+      + '<span>'+label+'</span></label>';
+  }
+  return '<div class="panel"><div class="panel-head"><h2>Bettor</h2><span class="hint">report for all bettors or one specific bettor ID</span></div>'
+    + '<div class="panel-body"><div class="bettor-row">'
+      + '<div class="radio-group">'+radio("all","All bettors")+radio("specific","Specific bettor")+'</div>'
+      + field
     + '</div></div></div>';
 }
 
@@ -585,8 +597,10 @@ function render(){
       + '<div class="sub">As of 2026-06-23</div></div>'
     + kpisHtml(data.totals)
     + '<div class="panel controls">'
-      + '<div class="controls-grid">'+periodPanelHtml(data)+bettorPanelHtml(data)+'</div>'
-      + '<div class="controls-grid">'+groupPanelHtml()+filtersPanelHtml(data)+'</div>'
+      + periodPanelHtml(data)
+      + bettorPanelHtml(data)
+      + groupPanelHtml()
+      + filtersPanelHtml(data)
     + '</div>'
     + tableHtml(data)
     + '<div class="footer-note">Mock data · single-file prototype. Wire <code>RECORDS</code> to your reporting API to go live.</div>'
@@ -643,7 +657,6 @@ root.addEventListener("click", function(e){
   if(t.closest("#reset-filters")){ state.filters={}; render(); return; }
 
   // Bettor by ID
-  if(t.closest("#bettor-clear")){ state.bettor=""; state.bettorInput=""; render(); return; }
   if(t.closest("#bettor-apply")){ state.bettor=state.bettorInput.trim(); render(); return; }
 
   var sel = t.closest(".ms-selall");
@@ -681,6 +694,11 @@ root.addEventListener("input", function(e){
 });
 
 root.addEventListener("change", function(e){
+  if(e.target.name==="bettorMode"){
+    state.bettorMode=e.target.value;
+    if(state.bettorMode==="all"){ state.bettor=""; state.bettorInput=""; }
+    render(); return;
+  }
   if(e.target.id==="date-from"){
     var v=e.target.value || DATE_MIN;
     state.dateFrom=v; if(state.dateFrom>state.dateTo) state.dateTo=state.dateFrom;
