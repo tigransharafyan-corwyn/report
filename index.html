@@ -100,12 +100,17 @@
   .btn:hover { border-color:var(--accent); color:var(--accent);}
   .search-box { border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:12.5px; max-width:220px;}
   .btn.preset.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover { filter:brightness(1.05); color:#fff; }
   .period-row { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; }
   .period-field { display:flex; flex-direction:column; gap:5px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
   .date-input { border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--text); font-family:inherit; }
   .date-input:focus { outline:none; border-color:var(--accent); }
-  .bettor-combo { width:300px; max-width:100%; }
-  .bettor-menu { max-height:300px; }
+  .bettor-input { border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:12.5px; width:240px; max-width:100%; font-family:inherit; color:var(--text); }
+  .bettor-input:focus { outline:none; border-color:var(--accent); }
+  .bettor-status { font-size:12px; font-weight:600; }
+  .bettor-status.ok { color:var(--pos); }
+  .bettor-status.err { color:var(--neg); }
   .spacer { flex:1; }
   .pill-count { background:var(--accent-soft); color:var(--accent); padding:3px 8px; border-radius:999px; font-size:11px; font-weight:650; }
 
@@ -209,8 +214,8 @@ var MARKETS = [
   { name:"Total (Over/Under)", outcomes:["Over","Under"] },
   { name:"Both Teams To Score", outcomes:["Yes","No"] }
 ];
-// Pool of bettor accounts; each outcome line is attributed to one of them.
-var BETTORS = ["alex_w","mariposa","highRoller88","jdoe","lucky_seven","betMaster","tom_h","nina2025","theGambler","coolhand","redfox","mike_b","sara_k","ace_of_spades","punter_pete","goldenarm","vegas_vic","quickdraw","longshot","the_oracle","kingpin","silentbob","luna_b","maxpayne","betty_bets","rocketman","shadow","captain_k","el_toro","frostbite","wildcard","bigben","sunny_d","viper","nomad","zenmaster","hotstreak","underdog","moneyball","slick_rick"];
+// Pool of bettor account IDs; each outcome line is attributed to one of them.
+var BETTORS = []; for (var _b=0; _b<40; _b++) BETTORS.push(String(100001+_b));
 
 function buildRecords(){
   var recs=[], id=0;
@@ -333,9 +338,8 @@ var state = {
   sortDir: "desc",           // asc | desc
   dateFrom: (isoMinus(DATE_MAX,29) < DATE_MIN ? DATE_MIN : isoMinus(DATE_MAX,29)),
   dateTo: DATE_MAX,
-  bettor: "",                // "" = all bettors, else a specific bettor name
-  bettorOpen: false,
-  bettorQuery: ""
+  bettor: "",                // applied bettor ID ("" = all bettors)
+  bettorInput: ""            // current text in the ID box (uncommitted)
 };
 
 function groupKeys(){ return DIMENSIONS.filter(function(d){ return !!state.grouping[d.key]; }).map(function(d){ return d.key; }); }
@@ -364,7 +368,7 @@ function compute(){
   sortTree(tree);
   var totals = deriveMetrics(filtered.reduce(addMetrics, emptyMetrics()));
   var maxGgr = 1; tree.forEach(function(n){ maxGgr=Math.max(maxGgr, Math.abs(n.metrics.ggr)); });
-  return {gk:gk, filterOptions:filterOptions, totals:totals, tree:tree, maxGgr:maxGgr, datedCount:base.length, bettorOptions:bettorOptions};
+  return {gk:gk, filterOptions:filterOptions, totals:totals, tree:tree, maxGgr:maxGgr, datedCount:base.length, bettorOptions:bettorOptions, sampleBettor:(bettorOptions[0]||"100001")};
 }
 
 function metricCells(m){
@@ -539,33 +543,23 @@ function periodPanelHtml(data){
 }
 
 function bettorPanelHtml(data){
-  var opts = data.bettorOptions;
-  var current = state.bettor || "All bettors";
-  var menu = "";
-  if(state.bettorOpen){
-    var q = state.bettorQuery.toLowerCase();
-    var shown = opts.filter(function(o){ return o.toLowerCase().indexOf(q)!==-1; });
-    var rowsH = '<div class="ms-opt '+(state.bettor===""?'sel':'')+'" data-bettor="__all__"><span class="cb">'+(state.bettor===""?CHECK:'')+'</span><span>All bettors</span></div>';
-    rowsH += shown.length===0 ? '<div class="ms-empty">No matching bettor</div>'
-      : shown.map(function(o){
-          var isSel = state.bettor===o;
-          return '<div class="ms-opt '+(isSel?'sel':'')+'" data-bettor="'+esc(o)+'"><span class="cb">'+(isSel?CHECK:'')+'</span><span>'+esc(o)+'</span></div>';
-        }).join("");
-    menu = '<div class="ms-menu bettor-menu">'
-      + '<input id="bettor-search" class="ms-search" placeholder="Search bettor…" value="'+esc(state.bettorQuery)+'">'
-      + rowsH + '</div>';
+  var applied = state.bettor;
+  var found = applied && data.datedCount>0;
+  var feedback;
+  if(!applied){
+    feedback = '<span class="muted">Showing <b>all bettors</b> · '+fmtNum(data.bettorOptions.length)+' active in range</span>';
+  } else if(found){
+    feedback = '<span class="bettor-status ok">✓ Bettor <b>'+esc(applied)+'</b> · '+fmtNum(data.datedCount)+' bet lines</span>';
+  } else {
+    feedback = '<span class="bettor-status err">No bets for ID “'+esc(applied)+'” in this period</span>';
   }
-  var count = state.bettor ? ('<span class="muted">'+fmtNum(data.datedCount)+' bet lines for this bettor</span>')
-                           : ('<span class="muted">'+fmtNum(opts.length)+' bettors in range</span>');
-  return '<div class="panel"><div class="panel-head"><h2>Bettor</h2><span class="hint">report for all or a single bettor</span>'
+  return '<div class="panel"><div class="panel-head"><h2>Bettor</h2><span class="hint">report for all or a single bettor ID</span>'
     + '<span class="spacer"></span>'
-    + (state.bettor ? '<button class="btn" id="bettor-clear">All bettors</button>' : '')
+    + (applied ? '<button class="btn" id="bettor-clear">All bettors</button>' : '')
     + '</div><div class="panel-body"><div class="period-row">'
-      + '<div class="ms bettor-combo">'
-        + '<button class="ms-toggle bettor-toggle'+(state.bettor===""?' placeholder':'')+'" id="bettor-toggle">'+esc(current)+'</button>'
-        + menu
-      + '</div>'
-      + count
+      + '<input id="bettor-input" class="bettor-input" placeholder="Enter bettor ID (e.g. '+esc(data.sampleBettor)+')" value="'+esc(state.bettorInput)+'" autocomplete="off">'
+      + '<button class="btn primary" id="bettor-apply">Apply</button>'
+      + feedback
     + '</div></div></div>';
 }
 
@@ -649,16 +643,9 @@ root.addEventListener("click", function(e){
   if(t.closest("#collapse-all")){ state.expanded=new Set(); render(); return; }
   if(t.closest("#reset-filters")){ state.filters={}; render(); return; }
 
-  // Bettor combobox
-  if(t.closest("#bettor-clear")){ state.bettor=""; state.bettorOpen=false; state.bettorQuery=""; render(); return; }
-  if(t.closest("#bettor-toggle")){ state.bettorOpen=!state.bettorOpen; state.bettorQuery=""; render(); return; }
-  var bopt = t.closest(".ms-opt[data-bettor]");
-  if(bopt){
-    var bv=bopt.getAttribute("data-bettor");
-    state.bettor = (bv==="__all__") ? "" : bv;
-    state.bettorOpen=false; state.bettorQuery="";
-    render(); return;
-  }
+  // Bettor by ID
+  if(t.closest("#bettor-clear")){ state.bettor=""; state.bettorInput=""; render(); return; }
+  if(t.closest("#bettor-apply")){ state.bettor=state.bettorInput.trim(); render(); return; }
 
   var sel = t.closest(".ms-selall");
   if(sel){ var dk=sel.getAttribute("data-dim"); var dd=compute(); var q=state.menuQuery.toLowerCase(); state.filters[dk]=dd.filterOptions[dk].filter(function(o){return o.toLowerCase().indexOf(q)!==-1;}); render(); return; }
@@ -684,14 +671,14 @@ root.addEventListener("click", function(e){
   }
 
   // click outside any dropdown closes it
-  if(state.bettorOpen && !t.closest(".bettor-combo")){ state.bettorOpen=false; state.bettorQuery=""; render(); return; }
   if(state.openMenu && !t.closest(".ms-menu")){ state.openMenu=null; state.menuQuery=""; render(); }
 });
 
 root.addEventListener("input", function(e){
   if(e.target.id==="search-input"){ state.search=e.target.value; render(); return; }
   if(e.target.id==="ms-search-input"){ state.menuQuery=e.target.value; render(); return; }
-  if(e.target.id==="bettor-search"){ state.bettorQuery=e.target.value; render(); return; }
+  // track ID typing without re-render so the field keeps focus; applied on Enter/Apply
+  if(e.target.id==="bettor-input"){ state.bettorInput=e.target.value; return; }
 });
 
 root.addEventListener("change", function(e){
@@ -709,7 +696,7 @@ root.addEventListener("change", function(e){
 
 document.addEventListener("keydown", function(e){
   if(e.key==="Escape" && state.openMenu){ state.openMenu=null; state.menuQuery=""; render(); }
-  if(e.key==="Escape" && state.bettorOpen){ state.bettorOpen=false; state.bettorQuery=""; render(); }
+  if(e.key==="Enter" && e.target.id==="bettor-input"){ state.bettorInput=e.target.value; state.bettor=state.bettorInput.trim(); render(); }
 });
 
 render();
