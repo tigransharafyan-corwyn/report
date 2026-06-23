@@ -354,7 +354,6 @@ function inDateRange(r){ return r.date>=state.dateFrom && r.date<=state.dateTo; 
 function compute(){
   var gk = groupKeys();
   var dated = RECORDS.filter(inDateRange);
-  var bettorOptions = Object.keys(dated.reduce(function(a,r){ a[r.bettor]=true; return a; },{})).sort();
   var base = state.bettor ? dated.filter(function(r){ return r.bettor===state.bettor; }) : dated;
   var filterOptions = {};
   DIMENSIONS.forEach(function(d){
@@ -368,7 +367,7 @@ function compute(){
   sortTree(tree);
   var totals = deriveMetrics(filtered.reduce(addMetrics, emptyMetrics()));
   var maxGgr = 1; tree.forEach(function(n){ maxGgr=Math.max(maxGgr, Math.abs(n.metrics.ggr)); });
-  return {gk:gk, filterOptions:filterOptions, totals:totals, tree:tree, maxGgr:maxGgr, datedCount:base.length, bettorOptions:bettorOptions, sampleBettor:(bettorOptions[0]||"100001")};
+  return {gk:gk, filterOptions:filterOptions, totals:totals, tree:tree, maxGgr:maxGgr, datedCount:base.length};
 }
 
 function metricCells(m){
@@ -547,7 +546,7 @@ function bettorPanelHtml(data){
   var found = applied && data.datedCount>0;
   var feedback;
   if(!applied){
-    feedback = '<span class="muted">Showing <b>all bettors</b> · '+fmtNum(data.bettorOptions.length)+' active in range</span>';
+    feedback = '<span class="muted">Showing <b>all bettors</b></span>';
   } else if(found){
     feedback = '<span class="bettor-status ok">✓ Bettor <b>'+esc(applied)+'</b> · '+fmtNum(data.datedCount)+' bet lines</span>';
   } else {
@@ -557,7 +556,7 @@ function bettorPanelHtml(data){
     + '<span class="spacer"></span>'
     + (applied ? '<button class="btn" id="bettor-clear">All bettors</button>' : '')
     + '</div><div class="panel-body"><div class="period-row">'
-      + '<input id="bettor-input" class="bettor-input" placeholder="Enter bettor ID (e.g. '+esc(data.sampleBettor)+')" value="'+esc(state.bettorInput)+'" autocomplete="off">'
+      + '<input id="bettor-input" class="bettor-input" placeholder="Enter bettor ID…" value="'+esc(state.bettorInput)+'" autocomplete="off">'
       + '<button class="btn primary" id="bettor-apply">Apply</button>'
       + feedback
     + '</div></div></div>';
