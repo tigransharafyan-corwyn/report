@@ -316,7 +316,7 @@ var state = {
   menuQuery: "",
   sortKey: "ggr",            // name | bets | stake | payout | ggr | margin
   sortDir: "desc",           // asc | desc
-  dateFrom: DATE_MIN,
+  dateFrom: (isoMinus(DATE_MAX,29) < DATE_MIN ? DATE_MIN : isoMinus(DATE_MAX,29)),
   dateTo: DATE_MAX
 };
 
@@ -493,14 +493,16 @@ function fmtDateLabel(iso){
 function periodPanelHtml(data){
   var presets=[
     {k:"today",label:"Today"},
+    {k:"yesterday",label:"Yesterday"},
+    {k:"3",label:"Last 3 days"},
     {k:"7",label:"Last 7 days"},
-    {k:"30",label:"Last 30 days"},
-    {k:"all",label:"All time"}
+    {k:"30",label:"Last 30 days"}
   ];
   // determine active preset
   var active="";
-  if(state.dateFrom===DATE_MIN && state.dateTo===DATE_MAX) active="all";
-  else if(state.dateFrom===DATE_MAX && state.dateTo===DATE_MAX) active="today";
+  if(state.dateFrom===DATE_MAX && state.dateTo===DATE_MAX) active="today";
+  else if(state.dateFrom===isoMinus(DATE_MAX,1) && state.dateTo===isoMinus(DATE_MAX,1)) active="yesterday";
+  else if(state.dateTo===DATE_MAX && state.dateFrom===isoMinus(DATE_MAX,2)) active="3";
   else if(state.dateTo===DATE_MAX && state.dateFrom===isoMinus(DATE_MAX,6)) active="7";
   else if(state.dateTo===DATE_MAX && state.dateFrom===isoMinus(DATE_MAX,29)) active="30";
   var presetBtns=presets.map(function(p){
@@ -583,8 +585,8 @@ root.addEventListener("click", function(e){
   var pre = t.closest(".preset[data-preset]");
   if(pre){
     var p=pre.getAttribute("data-preset");
-    if(p==="all"){ state.dateFrom=DATE_MIN; state.dateTo=DATE_MAX; }
-    else if(p==="today"){ state.dateFrom=DATE_MAX; state.dateTo=DATE_MAX; }
+    if(p==="today"){ state.dateFrom=DATE_MAX; state.dateTo=DATE_MAX; }
+    else if(p==="yesterday"){ state.dateFrom=isoMinus(DATE_MAX,1); state.dateTo=isoMinus(DATE_MAX,1); }
     else { state.dateFrom=isoMinus(DATE_MAX, parseInt(p,10)-1); state.dateTo=DATE_MAX; }
     if(state.dateFrom<DATE_MIN) state.dateFrom=DATE_MIN;
     render(); return;
