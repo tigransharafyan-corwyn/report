@@ -97,6 +97,8 @@
   .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   .btn.primary:hover { filter:brightness(1.05); color:#fff; }
   .period-row { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; }
+  .period-head { flex-wrap:wrap; row-gap:10px; padding-top:14px; padding-bottom:14px; }
+  .period-field.inline { flex-direction:row; align-items:center; gap:7px; }
   .period-field { display:flex; flex-direction:column; gap:5px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
   .date-input { border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--text); font-family:inherit; }
   .date-input:focus { outline:none; border-color:var(--accent); }
@@ -553,14 +555,13 @@ function periodPanelHtml(data){
   var presetBtns=presets.map(function(p){
     return '<button class="btn preset'+(active===p.k?' on':'')+'" data-preset="'+p.k+'">'+p.label+'</button>';
   }).join("");
-  var span = '<span class="muted">'+fmtNum(data.datedCount)+' records · '+fmtDateLabel(state.dateFrom)+' → '+fmtDateLabel(state.dateTo)+'</span>';
-  return '<div class="panel"><div class="panel-head"><h2>Period</h2><span class="hint">filter by event date</span>'
-    + '<span class="spacer"></span><div class="toolbar">'+presetBtns+'</div></div>'
-    + '<div class="panel-body"><div class="period-row">'
-      + '<label class="period-field">From<input type="date" id="date-from" class="date-input" value="'+state.dateFrom+'" min="'+DATE_MIN+'" max="'+DATE_MAX+'"></label>'
-      + '<label class="period-field">To<input type="date" id="date-to" class="date-input" value="'+state.dateTo+'" min="'+DATE_MIN+'" max="'+DATE_MAX+'"></label>'
+  var span = '<span class="muted">'+fmtNum(data.datedCount)+' records</span>';
+  return '<div class="panel"><div class="panel-head period-head"><h2>Period</h2><span class="hint">filter by event date</span>'
+    + '<label class="period-field inline">From<input type="date" id="date-from" class="date-input" value="'+state.dateFrom+'" min="'+DATE_MIN+'" max="'+DATE_MAX+'"></label>'
+    + '<label class="period-field inline">To<input type="date" id="date-to" class="date-input" value="'+state.dateTo+'" min="'+DATE_MIN+'" max="'+DATE_MAX+'"></label>'
       + span
-    + '</div></div></div>';
+    + '<span class="spacer"></span><div class="toolbar">'+presetBtns+'</div>'
+  + '</div></div>';
 }
 
 function bettorPanelHtml(data){
