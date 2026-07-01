@@ -138,6 +138,7 @@
   .twisty.open { transform:rotate(90deg); }
   .twisty.leaf { visibility:hidden; }
   .dim-tag { font-size:9.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); background:#eef2f7; border-radius:4px; padding:1px 5px; font-weight:700; flex-shrink:0;}
+  .row-icon { font-size:15px; line-height:1; width:26px; text-align:center; flex-shrink:0; display:inline-block; }
   .name { font-weight:550; overflow:hidden; text-overflow:ellipsis; }
   .row-total td { font-weight:700; border-top:2px solid var(--border-strong); border-bottom:2px solid var(--border-strong); background:#fbfcfe;}
   .row-total .name { font-weight:750; }
@@ -262,6 +263,24 @@ var DIMENSIONS = [
   {key:"outcome",label:"Outcome",tag:"OUT"}
 ];
 function dimByKey(k){ for(var i=0;i<DIMENSIONS.length;i++) if(DIMENSIONS[i].key===k) return DIMENSIONS[i]; }
+
+// Emoji icons for sport rows and flags for category rows.
+var SPORT_ICON = {
+  "Football":"⚽","Tennis":"🎾","Basketball":"🏀","Ice Hockey":"🏒","eSports":"🎮",
+  "American Football":"🏈","Baseball":"⚾","Rugby":"🏉","MMA":"🥊","Cricket":"🏏",
+  "Volleyball":"🏐","Handball":"🤾","Darts":"🎯","Snooker":"🎱","Formula 1":"🏎️"
+};
+var CATEGORY_FLAG = {
+  "England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Spain":"🇪🇸","Italy":"🇮🇹","Germany":"🇩🇪","France":"🇫🇷","Sweden":"🇸🇪",
+  "USA":"🇺🇸","Japan":"🇯🇵","India":"🇮🇳","Brazil":"🇧🇷","Netherlands":"🇳🇱","Portugal":"🇵🇹",
+  "Europe":"🇪🇺","International":"🌍","World":"🌍","ATP":"🎾","WTA":"🎾","UFC":"🥊","PDC":"🎯",
+  "Counter-Strike 2":"🎮","Dota 2":"🎮"
+};
+function rowIcon(n){
+  if(n.dimKey==="sport")    return '<span class="row-icon" title="'+esc(n.value)+'">'+(SPORT_ICON[n.value]||"🎲")+'</span>';
+  if(n.dimKey==="category") return '<span class="row-icon" title="'+esc(n.value)+'">'+(CATEGORY_FLAG[n.value]||"🌐")+'</span>';
+  return '<span class="dim-tag">'+n.dimTag+'</span>';
+}
 
 /* ----------------------------- Helpers ----------------------------- */
 function fmtMoney(n){ return "€"+Math.round(n).toLocaleString("en-US"); }
@@ -393,7 +412,7 @@ function rowsHtml(nodes, maxGgr){
       out += '<tr>'
         + '<td class="lbl"><div class="cell" style="padding-left:'+(14+n.depth*20)+'px">'
           + '<span class="twisty '+(hasKids?(isOpen?'open':''):'leaf')+'" '+(hasKids?('data-path="'+esc(n.path)+'"'):'')+'>'+CHEVRON+'</span>'
-          + '<span class="dim-tag">'+n.dimTag+'</span>'
+          + rowIcon(n)
           + '<span class="name" title="'+esc(n.value)+'">'+esc(n.value)+'</span>'
           + (hasKids?'<span class="muted">· '+n.children.length+'</span>':'')
         + '</div></td>'
